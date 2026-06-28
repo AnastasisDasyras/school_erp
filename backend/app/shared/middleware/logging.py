@@ -1,8 +1,11 @@
 import logging
+import logging.handlers
+import socket
 import time
 import uuid
 from collections.abc import Awaitable, Callable
 from contextvars import ContextVar
+from pathlib import Path
 
 import structlog
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -11,9 +14,30 @@ from starlette.responses import Response
 
 request_id_ctx: ContextVar[str] = ContextVar("request_id", default="-")
 
+# Docker sets the container's hostname to its container id, so this is a free,
+# zero-config way to tell which replica served a request — the round-robin
+# load-balancing demo for Phase 2 depends on this being visible per-response.
+_INSTANCE_ID = socket.gethostname()
 
-def configure_logging(log_level: str) -> None:
-    logging.basicConfig(format="%(message)s", level=log_level)
+
+def configure_logging(log_level: str, log_dir: str | None = None) -> None:
+    handlers: list[logging.Handler] = [logging.StreamHandler()]
+
+    if log_dir:
+        log_path = Path(log_dir)
+        log_path.mkdir(parents=True, exist_ok=True)
+        # One file per backend replica so backend1/backend2 don't interleave
+        # writes to the same file when sharing the bind-mounted logs/ dir.
+        file_handler = logging.handlers.TimedRotatingFileHandler(
+            log_path / f"app-{_INSTANCE_ID}.log",
+            when="midnight",
+            backupCount=14,
+            encoding="utf-8",
+        )
+        file_handler.suffix = "%Y-%m-%d"
+        handlers.append(file_handler)
+
+    logging.basicConfig(format="%(message)s", level=log_level, handlers=handlers)
     structlog.configure(
         processors=[
             structlog.contextvars.merge_contextvars,
@@ -22,7 +46,7 @@ def configure_logging(log_level: str) -> None:
             structlog.processors.JSONRenderer(),
         ],
         wrapper_class=structlog.make_filtering_bound_logger(getattr(logging, log_level.upper())),
-        logger_factory=structlog.PrintLoggerFactory(),
+        logger_factory=structlog.stdlib.LoggerFactory(),
     )
 
 
@@ -42,6 +66,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         structlog.contextvars.bind_contextvars(request_id=request_id)
 
         log = structlog.get_logger("http")
+        structlog.contextvars.bind_contextvars(instance_id=_INSTANCE_ID)
         start = time.perf_counter()
         try:
             response = await call_next(request)
@@ -64,6 +89,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
                 duration_ms=round(duration_ms, 2),
             )
             response.headers["X-Request-Id"] = request_id
+            response.headers["X-Instance-Id"] = _INSTANCE_ID
             return response
         finally:
             structlog.contextvars.clear_contextvars()

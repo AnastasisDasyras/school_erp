@@ -42,10 +42,10 @@ what (Admin / Teacher / Student).
   visible in the route definition instead of buried in the function body, and
   it's reused identically across modules.
 - **Access/refresh split** is the standard mitigation for "what if a token
-  leaks" — a stolen access token expires in minutes; refresh tokens are
-  intentionally not implemented as a `/refresh` endpoint yet (noted as
-  follow-up) since the interview-relevant pattern (the split itself) was the
-  goal for this phase.
+  leaks" — a stolen access token expires in minutes. `POST /auth/refresh`
+  takes a refresh token, validates its `type` claim is `"refresh"` (rejecting
+  an access token used where a refresh token is expected), and issues a new
+  access/refresh pair if the user still exists and is active.
 
 ## Consequences
 - No token revocation/blocklist yet — a logged-out user's access token is

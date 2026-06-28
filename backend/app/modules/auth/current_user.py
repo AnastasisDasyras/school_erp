@@ -7,8 +7,9 @@ from dataclasses import dataclass
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from app.modules.auth.application.exceptions import InvalidTokenError
 from app.modules.auth.domain.user import Role
-from app.modules.auth.infrastructure.tokens import InvalidTokenError, JoseTokenIssuer
+from app.modules.auth.infrastructure.tokens import JoseTokenIssuer
 from app.shared.config.settings import Settings, get_settings
 
 bearer_scheme = HTTPBearer(auto_error=True)

@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     app_name: str = "school-erp"
     environment: str = "local"
     log_level: str = "INFO"
+    log_dir: str = "app/logs"
 
     database_url: str = "postgresql+asyncpg://erp:erp@localhost:5432/erp"
 

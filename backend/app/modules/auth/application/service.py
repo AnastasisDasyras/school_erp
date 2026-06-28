@@ -2,7 +2,13 @@ from __future__ import annotations
 
 import uuid
 
-from app.modules.auth.application.dto import LoginInput, RefreshTokenInput, RegisterUserInput, TokenPair, UserView
+from app.modules.auth.application.dto import (
+    LoginInput,
+    RefreshTokenInput,
+    RegisterUserInput,
+    TokenPair,
+    UserView,
+)
 from app.modules.auth.application.exceptions import (
     DuplicateUserEmailError,
     InactiveUserError,

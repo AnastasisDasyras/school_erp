@@ -7,3 +7,4 @@ them before discussing the project's architecture.
 - [0002 — Clean architecture per module](0002-clean-architecture-per-module.md)
 - [0003 — JWT auth (access + refresh) and RBAC](0003-jwt-auth-and-rbac.md)
 - [0004 — Enrollment as a single ACID transaction across two aggregates](0004-enrollment-transaction-boundary.md)
+- [0005 — Stateless services, horizontal scaling, and load balancing](0005-horizontal-scaling-and-load-balancing.md)
