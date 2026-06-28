@@ -1,17 +1,66 @@
+from __future__ import annotations
+
+import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
+
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+
+from app.modules.auth.domain.user import Role
+from app.modules.auth.infrastructure.tokens import InvalidTokenError, JoseTokenIssuer
+from app.shared.config.settings import Settings, get_settings
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=True)
 
 
 @dataclass(frozen=True)
 class CurrentUser:
-    id: str
-    role: str
+    id: uuid.UUID
+    role: Role
 
 
-def get_current_user() -> CurrentUser:
-    """Stub for Phase 0 so other modules can depend on a 'current user' shape.
+def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    settings: Settings = Depends(get_settings),
+) -> CurrentUser:
+    """Decodes the bearer JWT into a CurrentUser.
 
-    Replaced in Phase 1 by real JWT decoding + RBAC. Modules should depend on
-    this function (a FastAPI dependency), never on JWT details directly —
-    that's the seam that makes the Phase 1 swap a one-file change.
+    Every other module depends on this function, never on JWT/jose details
+    directly — that's the seam that let Phase 0's fake-admin stub become a
+    real implementation here without touching a single other module.
     """
-    return CurrentUser(id="00000000-0000-0000-0000-000000000000", role="admin")
+    tokens = JoseTokenIssuer(settings)
+    try:
+        payload = tokens.decode(token)
+    except InvalidTokenError as exc:
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED, "invalid or expired token"
+        ) from exc
+
+    if payload.get("type") != "access":
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "not an access token")
+
+    try:
+        user_id = uuid.UUID(str(payload["sub"]))
+        role = Role(payload["role"])
+    except (KeyError, ValueError) as exc:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "malformed token") from exc
+
+    return CurrentUser(id=user_id, role=role)
+
+
+def require_role(*allowed: Role) -> Callable[[CurrentUser], CurrentUser]:
+    """RBAC dependency factory: `Depends(require_role(Role.ADMIN))`.
+
+    Kept separate from get_current_user so endpoints can opt into "any
+    authenticated user" (just get_current_user) or a specific role set
+    without duplicating the JWT-decoding logic.
+    """
+
+    def _check(user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
+        if user.role not in allowed:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "insufficient role")
+        return user
+
+    return _check
