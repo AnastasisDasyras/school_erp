@@ -5,13 +5,13 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.modules.auth.domain.user import Role
 from app.modules.auth.infrastructure.tokens import InvalidTokenError, JoseTokenIssuer
 from app.shared.config.settings import Settings, get_settings
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=True)
+bearer_scheme = HTTPBearer(auto_error=True)
 
 
 @dataclass(frozen=True)
@@ -21,7 +21,7 @@ class CurrentUser:
 
 
 def get_current_user(
-    token: str = Depends(oauth2_scheme),
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     settings: Settings = Depends(get_settings),
 ) -> CurrentUser:
     """Decodes the bearer JWT into a CurrentUser.
@@ -32,7 +32,7 @@ def get_current_user(
     """
     tokens = JoseTokenIssuer(settings)
     try:
-        payload = tokens.decode(token)
+        payload = tokens.decode(credentials.credentials)
     except InvalidTokenError as exc:
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED, "invalid or expired token"
