@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-from app.modules.auth.application.dto import LoginInput, RegisterUserInput, TokenPair, UserView
+import uuid
+
+from app.modules.auth.application.dto import LoginInput, RefreshTokenInput, RegisterUserInput, TokenPair, UserView
 from app.modules.auth.application.exceptions import (
     DuplicateUserEmailError,
     InactiveUserError,
     InvalidCredentialsError,
+    InvalidTokenError,
 )
 from app.modules.auth.application.ports import PasswordHasher, TokenIssuer, UserRepository
 from app.modules.auth.domain.user import User
@@ -55,3 +58,25 @@ class AuthService:
             access_token=self._tokens.issue_access_token(user_id=user.id, role=user.role.value),
             refresh_token=self._tokens.issue_refresh_token(user_id=user.id, role=user.role.value),
         )
+        
+    async def refresh(self, data: RefreshTokenInput) -> TokenPair:
+        decoded_token = self._tokens.decode(data.refresh_token)
+        if decoded_token.get("type") != "refresh":
+            raise InvalidTokenError(data.refresh_token)
+
+        try:
+            user_id = uuid.UUID(str(decoded_token.get('sub')))
+        except (KeyError, ValueError) as exc:
+            raise InvalidTokenError(data.refresh_token) from exc
+
+        user = await self._repository.get(user_id)
+        if user is None:
+            raise InvalidTokenError(data.refresh_token)
+        if not user.is_active:
+            raise InactiveUserError(user.id)
+
+        return TokenPair(
+            access_token=self._tokens.issue_access_token(user_id=user.id, role=user.role.value),
+            refresh_token=self._tokens.issue_refresh_token(user_id=user.id, role=user.role.value),
+        )
+

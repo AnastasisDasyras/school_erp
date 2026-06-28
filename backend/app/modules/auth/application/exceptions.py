@@ -12,3 +12,6 @@ class InvalidCredentialsError(Exception):
 
 class InactiveUserError(Exception):
     pass
+
+class InvalidTokenError(Exception):
+    pass

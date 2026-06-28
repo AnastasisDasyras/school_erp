@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 
+from app.modules.auth.application.exceptions import InvalidTokenError
 from app.modules.auth.domain.user import User
 
 
@@ -39,5 +40,8 @@ class FakeTokenIssuer:
         return f"refresh:{user_id}:{role}"
 
     def decode(self, token: str) -> dict[str, object]:
-        kind, user_id, role = token.split(":")
+        try:
+            kind, user_id, role = token.split(":")
+        except ValueError as exc:
+            raise InvalidTokenError(token) from exc
         return {"sub": user_id, "role": role, "type": kind}

@@ -7,10 +7,8 @@ from typing import Any
 from jose import JWTError, jwt
 
 from app.shared.config.settings import Settings
+from app.modules.auth.application.exceptions import InvalidTokenError
 
-
-class InvalidTokenError(Exception):
-    pass
 
 
 class JoseTokenIssuer:

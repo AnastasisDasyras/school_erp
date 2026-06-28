@@ -38,3 +38,6 @@ class TokenResponse(BaseModel):
     @classmethod
     def from_pair(cls, pair: TokenPair) -> TokenResponse:
         return cls(**pair.__dict__)
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str

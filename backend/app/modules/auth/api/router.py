@@ -6,15 +6,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.modules.auth.api.dependencies import get_auth_service
 from app.modules.auth.api.schemas import (
     LoginRequest,
+    RefreshTokenRequest,
     RegisterRequest,
     TokenResponse,
     UserResponse,
 )
-from app.modules.auth.application.dto import LoginInput, RegisterUserInput
+from app.modules.auth.application.dto import LoginInput, RefreshTokenInput, RegisterUserInput
 from app.modules.auth.application.exceptions import (
     DuplicateUserEmailError,
     InactiveUserError,
     InvalidCredentialsError,
+    InvalidTokenError,
 )
 from app.modules.auth.application.service import AuthService
 from app.shared.database.session import get_session
@@ -46,5 +48,17 @@ async def login(
     try:
         pair = await service.login(LoginInput(email=body.email, password=body.password))
     except (InvalidCredentialsError, InactiveUserError) as exc:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "invalid credentials") from exc
+    return TokenResponse.from_pair(pair)
+
+
+@router.post("/refresh", response_model=TokenResponse)
+async def refresh(
+    body: RefreshTokenRequest,
+    service: AuthService = Depends(get_auth_service),
+) -> TokenResponse:
+    try:
+        pair = await service.refresh(RefreshTokenInput(refresh_token=body.refresh_token))
+    except (InvalidCredentialsError, InactiveUserError, InvalidTokenError) as exc:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "invalid credentials") from exc
     return TokenResponse.from_pair(pair)

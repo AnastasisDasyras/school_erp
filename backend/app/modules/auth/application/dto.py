@@ -32,3 +32,8 @@ class UserView:
     email: str
     role: Role
     is_active: bool
+
+
+@dataclass(frozen=True)
+class RefreshTokenInput:
+    refresh_token: str
