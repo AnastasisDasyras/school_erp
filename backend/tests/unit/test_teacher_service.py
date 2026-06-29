@@ -8,12 +8,13 @@ from app.modules.teachers.application.exceptions import (
     TeacherNotFoundError,
 )
 from app.modules.teachers.application.service import TeacherService
+from tests.unit.cache_fakes import InMemoryCache
 from tests.unit.teacher_fakes import InMemoryTeacherRepository
 
 
 @pytest.fixture
 def service() -> TeacherService:
-    return TeacherService(InMemoryTeacherRepository())
+    return TeacherService(InMemoryTeacherRepository(), InMemoryCache())
 
 
 async def _create(service: TeacherService, email: str = "ada@example.com") -> uuid.UUID:

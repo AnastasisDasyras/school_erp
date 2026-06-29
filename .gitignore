@@ -38,4 +38,4 @@ npm-debug.log*
 .DS_Store
 
 # Logs
-*.log
+backend/app/logs/*
