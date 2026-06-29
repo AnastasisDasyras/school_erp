@@ -9,3 +9,4 @@ them before discussing the project's architecture.
 - [0004 — Enrollment as a single ACID transaction across two aggregates](0004-enrollment-transaction-boundary.md)
 - [0005 — Stateless services, horizontal scaling, and load balancing](0005-horizontal-scaling-and-load-balancing.md)
 - [0006 — Cache-aside reads with Redis, explicit invalidation on writes](0006-cache-aside-with-redis.md)
+- [0007 — Idempotency keys for safe client retries](0007-idempotency-keys.md)

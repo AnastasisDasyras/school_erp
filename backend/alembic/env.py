@@ -14,6 +14,7 @@ from app.modules.teachers.infrastructure import orm as teachers_orm  # noqa: F40
 from app.shared.config import get_settings
 from app.shared.database.base import Base
 from app.shared.database.session import make_engine
+from app.shared.idempotency import orm as idempotency_orm  # noqa: F401
 
 config = context.config
 

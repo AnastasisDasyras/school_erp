@@ -5,6 +5,7 @@ from app.modules.courses.infrastructure.repository import SqlAlchemyCourseReposi
 from app.modules.enrollment.application.service import EnrollmentService
 from app.modules.enrollment.infrastructure.repository import SqlAlchemyEnrollmentRepository
 from app.shared.database.session import get_session
+from app.shared.idempotency.repository import SqlAlchemyIdempotencyStore
 
 
 def get_enrollment_service(session: AsyncSession = Depends(get_session)) -> EnrollmentService:
@@ -13,3 +14,12 @@ def get_enrollment_service(session: AsyncSession = Depends(get_session)) -> Enro
     enrollments = SqlAlchemyEnrollmentRepository(session)
     courses = SqlAlchemyCourseRepository(session)
     return EnrollmentService(enrollments, courses)
+
+
+def get_idempotency_store(
+    session: AsyncSession = Depends(get_session),
+) -> SqlAlchemyIdempotencyStore:
+    """Same session as get_enrollment_service (FastAPI caches get_session's
+    result per-request) so the idempotency record commits in the same
+    transaction as the enrollment write — see ADR 0007."""
+    return SqlAlchemyIdempotencyStore(session)
