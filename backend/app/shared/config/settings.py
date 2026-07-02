@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     aws_access_key_id: str = "test"
     aws_secret_access_key: str = "test"
 
+    # Account id is always "000000000000" under LocalStack; in real AWS this
+    # whole ARN would come from Terraform output / env injection instead.
+    sns_events_topic_arn: str = "arn:aws:sns:us-east-1:000000000000:school-erp-events"
+
     otel_exporter_otlp_endpoint: str | None = None
 
 
