@@ -1,0 +1,2 @@
+class AttendanceAlreadyRecordedError(Exception):
+    pass
