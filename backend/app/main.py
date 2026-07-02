@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.attendance.api.router import router as attendance_router
 from app.modules.auth.api.router import router as auth_router
 from app.modules.courses.api.router import router as courses_router
 from app.modules.enrollment.api.router import router as enrollment_router
@@ -30,6 +31,7 @@ app.include_router(students_router, prefix="/api/v1")
 app.include_router(teachers_router, prefix="/api/v1")
 app.include_router(courses_router, prefix="/api/v1")
 app.include_router(enrollment_router, prefix="/api/v1")
+app.include_router(attendance_router, prefix="/api/v1")
 
 
 @app.get("/health")

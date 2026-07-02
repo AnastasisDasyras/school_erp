@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from alembic import context
 
 # Import every module's ORM models so they register on Base.metadata for autogenerate.
+from app.modules.attendance.infrastructure import orm as attendance_orm  # noqa: F401
 from app.modules.auth.infrastructure import orm as auth_orm  # noqa: F401
 from app.modules.courses.infrastructure import orm as courses_orm  # noqa: F401
 from app.modules.enrollment.infrastructure import orm as enrollment_orm  # noqa: F401
@@ -15,6 +16,7 @@ from app.shared.config import get_settings
 from app.shared.database.base import Base
 from app.shared.database.session import make_engine
 from app.shared.idempotency import orm as idempotency_orm  # noqa: F401
+from app.shared.outbox import orm as outbox_orm  # noqa: F401
 
 config = context.config
 
