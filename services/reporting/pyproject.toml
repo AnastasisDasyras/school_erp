@@ -1,0 +1,40 @@
+[project]
+name = "school-erp-reporting"
+version = "0.1.0"
+description = "Reporting microservice — SQS consumer, writes audit log to own DB"
+requires-python = ">=3.12"
+dependencies = [
+    "boto3>=1.35",
+    "tenacity>=9.0",
+    "pydantic-settings>=2.6",
+    "structlog>=24.4",
+    "sqlalchemy>=2.0",
+    "alembic>=1.13",
+    "asyncpg>=0.30",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.7",
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "aiosqlite>=0.20",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"

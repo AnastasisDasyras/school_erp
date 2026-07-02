@@ -21,6 +21,7 @@ npm-debug.log*
 .env.*
 !.env.example
 !*/.env.docker
+!*/*/.env.docker
 
 # Docker / data volumes
 **/localstack_data/

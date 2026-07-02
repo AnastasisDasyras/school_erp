@@ -11,3 +11,4 @@ them before discussing the project's architecture.
 - [0006 — Cache-aside reads with Redis, explicit invalidation on writes](0006-cache-aside-with-redis.md)
 - [0007 — Idempotency keys for safe client retries](0007-idempotency-keys.md)
 - [0008 — Outbox pattern for reliable event publishing (SNS/SQS via LocalStack)](0008-outbox-pattern-and-eda.md)
+- [0009 — Extracting Notification and Reporting as standalone microservices](0009-microservice-extraction-notification-reporting.md)

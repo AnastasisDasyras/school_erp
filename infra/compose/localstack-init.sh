@@ -27,3 +27,6 @@ REPORTING_QUEUE_ARN=$(awslocal sqs get-queue-attributes --queue-url "$REPORTING_
 # are read-only/async, never where they share a transaction" reasoning).
 awslocal sns subscribe --topic-arn "$TOPIC_ARN" --protocol sqs --notification-endpoint "$NOTIFICATION_QUEUE_ARN"
 awslocal sns subscribe --topic-arn "$TOPIC_ARN" --protocol sqs --notification-endpoint "$REPORTING_QUEUE_ARN"
+
+# SES requires sender email verification before it will accept send_email calls.
+awslocal ses verify-email-identity --email-address noreply@school.local

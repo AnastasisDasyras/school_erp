@@ -30,7 +30,7 @@ services:
   localstack:
     image: localstack/localstack:3.8
     environment:
-      SERVICES: sns,sqs,s3
+      SERVICES: sns,sqs,s3,ses
       DEBUG: 0
     ports:
       - "4566:4566"
@@ -128,6 +128,51 @@ services:
     volumes:
       - ../../backend:/app
     command: ["python", "-m", "app.shared.outbox.relay"]
+
+  # ── Phase 5: Microservices ──────────────────────────────────────────────────
+
+  # Reporting needs its own migration (audit_log table) before it can start.
+  migrate-reporting:
+    build:
+      context: ../../services/reporting
+    env_file:
+      - ../../services/reporting/.env.docker
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ../../services/reporting:/app
+    command: ["alembic", "upgrade", "head"]
+
+  # Notification microservice: SQS consumer → SES email.
+  # No DB, no migrate step — pure event consumer.
+  notification:
+    build:
+      context: ../../services/notification
+    env_file:
+      - ../../services/notification/.env.docker
+    depends_on:
+      localstack:
+        condition: service_healthy
+    volumes:
+      - ../../services/notification:/app
+
+  # Reporting microservice: SQS consumer → audit_log table in its own DB.
+  # Same Postgres instance as the monolith in local dev, own table = own data.
+  reporting:
+    build:
+      context: ../../services/reporting
+    env_file:
+      - ../../services/reporting/.env.docker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+      migrate-reporting:
+        condition: service_completed_successfully
+    volumes:
+      - ../../services/reporting:/app
 
   nginx:
     image: nginx:1.27-alpine
