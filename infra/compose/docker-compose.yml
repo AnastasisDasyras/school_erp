@@ -107,6 +107,28 @@ services:
       timeout: 5s
       retries: 10
 
+  # The outbox relay: a standalone process, not part of either backend
+  # replica. It polls outbox_events for PENDING rows and publishes them to
+  # SNS — see ADR 0008. Running it as its own container (rather than a
+  # background task inside backend1/backend2) means it has exactly one
+  # writer polling the table at a time without coordinating with the web
+  # process's lifecycle (reload, scaling, restarts).
+  outbox-relay:
+    build:
+      context: ../../backend
+    env_file:
+      - ../../backend/.env.docker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+      - ../../backend:/app
+    command: ["python", "-m", "app.shared.outbox.relay"]
+
   nginx:
     image: nginx:1.27-alpine
     depends_on:
