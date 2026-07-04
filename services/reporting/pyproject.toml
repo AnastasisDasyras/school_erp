@@ -11,6 +11,8 @@ dependencies = [
     "sqlalchemy>=2.0",
     "alembic>=1.13",
     "asyncpg>=0.30",
+    "opentelemetry-sdk>=1.27",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.27",
 ]
 
 [project.optional-dependencies]

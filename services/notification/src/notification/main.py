@@ -6,9 +6,11 @@ import structlog
 from notification.config import get_settings
 from notification.consumer import run_consumer
 from notification.email import SesEmailSender
+from notification.tracing import setup_tracing
 
 
 def main() -> None:
+    setup_tracing()
     settings = get_settings()
     logging.basicConfig(format="%(message)s", level=settings.log_level)
     structlog.configure(

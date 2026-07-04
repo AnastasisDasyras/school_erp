@@ -6,10 +6,12 @@ import json
 import boto3
 import structlog
 import tenacity
+from opentelemetry import trace
 
 from reporting.config import Settings
 from reporting.database import make_session_factory
 from reporting.handler import SqlAlchemyAuditWriter, handle
+from reporting.tracing import tracer
 
 log = structlog.get_logger("reporting.consumer")
 
@@ -68,7 +70,11 @@ async def run_consumer(settings: Settings) -> None:
             try:
                 event_type, payload = _parse_body(msg["Body"])
                 log.info("message_received", event_type=event_type)
-                await _process_with_retry(event_type, payload, settings)
+                with tracer.start_as_current_span(
+                    f"reporting.process {event_type}",
+                    attributes={"messaging.event_type": event_type},
+                ):
+                    await _process_with_retry(event_type, payload, settings)
                 await asyncio.to_thread(
                     sqs.delete_message, QueueUrl=queue_url, ReceiptHandle=receipt
                 )

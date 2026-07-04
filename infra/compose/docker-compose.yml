@@ -68,6 +68,9 @@ services:
       context: ../../backend
     env_file:
       - ../../backend/.env.docker
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      OTEL_SERVICE_NAME: backend1
     depends_on:
       postgres:
         condition: service_healthy
@@ -77,6 +80,8 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      jaeger:
+        condition: service_started
     volumes:
       - ../../backend:/app
     healthcheck:
@@ -90,6 +95,9 @@ services:
       context: ../../backend
     env_file:
       - ../../backend/.env.docker
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      OTEL_SERVICE_NAME: backend2
     depends_on:
       postgres:
         condition: service_healthy
@@ -99,6 +107,8 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      jaeger:
+        condition: service_started
     volumes:
       - ../../backend:/app
     healthcheck:
@@ -151,9 +161,14 @@ services:
       context: ../../services/notification
     env_file:
       - ../../services/notification/.env.docker
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      OTEL_SERVICE_NAME: notification
     depends_on:
       localstack:
         condition: service_healthy
+      jaeger:
+        condition: service_started
     volumes:
       - ../../services/notification:/app
 
@@ -164,6 +179,9 @@ services:
       context: ../../services/reporting
     env_file:
       - ../../services/reporting/.env.docker
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      OTEL_SERVICE_NAME: reporting
     depends_on:
       postgres:
         condition: service_healthy
@@ -171,6 +189,8 @@ services:
         condition: service_healthy
       migrate-reporting:
         condition: service_completed_successfully
+      jaeger:
+        condition: service_started
     volumes:
       - ../../services/reporting:/app
 
@@ -197,6 +217,68 @@ services:
       - ../../frontend:/app
       - /app/node_modules
 
+  # ── Phase 6: Observability ─────────────────────────────────────────────────
+
+  # Jaeger: all-in-one collector + UI. Receives OTLP traces from every service
+  # via gRPC (:4317) and HTTP (:4318). UI at :16686.
+  jaeger:
+    image: jaegertracing/all-in-one:1.58
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"   # Jaeger UI
+      - "4317:4317"     # OTLP gRPC
+      - "4318:4318"     # OTLP HTTP
+
+  # Prometheus: scrapes /metrics from both backend replicas every 15s.
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ../observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=7d"
+
+  # Grafana: dashboards over Prometheus metrics. Auto-provisioned datasource
+  # and a starter dashboard via the provisioning/ mount.
+  grafana:
+    image: grafana/grafana:11.1.0
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    volumes:
+      - ../observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+  # Loki: log aggregation. Promtail (below) ships container logs to it.
+  # Grafana uses Loki as a second datasource so you can jump from a trace to
+  # its logs by time range.
+  loki:
+    image: grafana/loki:3.1.0
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+
+  # Promtail: reads Docker container logs and ships them to Loki, tagged with
+  # container name so you can filter by service in Grafana Explore.
+  promtail:
+    image: grafana/promtail:3.1.0
+    volumes:
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ../observability/promtail.yml:/etc/promtail/config.yml:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+
 volumes:
   postgres_data:
   localstack_data:
+  grafana_data:

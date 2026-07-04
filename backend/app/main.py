@@ -1,5 +1,6 @@
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,12 +13,20 @@ from app.modules.teachers.api.router import router as teachers_router
 from app.shared.config import get_settings
 from app.shared.database.session import get_session
 from app.shared.middleware.logging import RequestContextMiddleware, configure_logging
+from app.shared.observability.middleware import PrometheusMiddleware
+from app.shared.observability.setup import setup_tracing
 
 settings = get_settings()
 configure_logging(settings.log_level, settings.log_dir)
 
 app = FastAPI(title=settings.app_name)
 
+# OTel tracing — must be called before any request arrives.
+# SQLAlchemy engine instrumentation is deferred to after the engine is created
+# (see database/session.py); FastAPI auto-instrumentation happens here.
+setup_tracing(app)
+
+app.add_middleware(PrometheusMiddleware)
 app.add_middleware(RequestContextMiddleware)
 app.add_middleware(
     CORSMiddleware,
@@ -32,6 +41,16 @@ app.include_router(teachers_router, prefix="/api/v1")
 app.include_router(courses_router, prefix="/api/v1")
 app.include_router(enrollment_router, prefix="/api/v1")
 app.include_router(attendance_router, prefix="/api/v1")
+
+
+@app.get("/metrics", include_in_schema=False)
+async def metrics() -> Response:
+    """Prometheus scrape endpoint. Prometheus hits this every 15s (see prometheus.yml).
+
+    include_in_schema=False keeps it out of the OpenAPI docs — it's an
+    infrastructure endpoint, not part of the public API contract.
+    """
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
 @app.get("/health")

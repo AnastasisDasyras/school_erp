@@ -5,9 +5,11 @@ import structlog
 
 from reporting.config import get_settings
 from reporting.consumer import run_consumer
+from reporting.tracing import setup_tracing
 
 
 def main() -> None:
+    setup_tracing()
     settings = get_settings()
     logging.basicConfig(format="%(message)s", level=settings.log_level)
     structlog.configure(

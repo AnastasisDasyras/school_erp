@@ -1,0 +1,19 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Both backend replicas expose /metrics on their internal port 8000.
+  # Prometheus reaches them by container name (Docker DNS) — not via Nginx,
+  # so each replica's metrics are tracked separately (instance label differs).
+  - job_name: backend
+    static_configs:
+      - targets:
+          - backend1:8000
+          - backend2:8000
+
+  # Prometheus scrapes itself so we can monitor the scrape health.
+  - job_name: prometheus
+    static_configs:
+      - targets:
+          - localhost:9090

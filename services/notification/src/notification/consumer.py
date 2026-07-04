@@ -6,10 +6,12 @@ import json
 import boto3
 import structlog
 import tenacity
+from opentelemetry import trace
 
 from notification.config import Settings
 from notification.email import EmailSender
 from notification.handler import handle
+from notification.tracing import tracer
 
 log = structlog.get_logger("notification.consumer")
 
@@ -89,14 +91,19 @@ async def run_consumer(settings: Settings, email: EmailSender) -> None:
 
         for msg in response.get("Messages", []):
             receipt = msg["ReceiptHandle"]
+            event_type = "unknown"
             try:
                 event_type, payload = _parse_body(msg["Body"])
                 log.info("message_received", event_type=event_type)
-                await _process_with_retry(event_type, payload, email)
+                with tracer.start_as_current_span(
+                    f"notification.process {event_type}",
+                    attributes={"messaging.event_type": event_type},
+                ):
+                    await _process_with_retry(event_type, payload, email)
                 await asyncio.to_thread(
                     sqs.delete_message, QueueUrl=queue_url, ReceiptHandle=receipt
                 )
                 log.info("message_deleted", event_type=event_type)
             except Exception:
                 # Don't delete — let SQS retry and eventually route to DLQ.
-                log.exception("message_processing_failed", event_type=event_type if "event_type" in dir() else "unknown")
+                log.exception("message_processing_failed", event_type=event_type)

@@ -9,6 +9,11 @@ from app.shared.config.settings import get_settings
 from app.shared.database.session import SessionFactory
 from app.shared.messaging.ports import MessagePublisher
 from app.shared.messaging.sns_publisher import SnsPublisher
+from app.shared.observability.metrics import (
+    outbox_failed_total,
+    outbox_pending_events,
+    outbox_published_total,
+)
 from app.shared.outbox.repository import SqlAlchemyOutboxRepository
 
 log = structlog.get_logger("outbox_relay")
@@ -29,6 +34,7 @@ async def relay_once(publisher: MessagePublisher) -> int:
         repository = SqlAlchemyOutboxRepository(session)
         pending = await repository.list_pending()
 
+        outbox_pending_events.set(len(pending))
         for row in pending:
             try:
                 await publisher.publish(event_type=row.event_type, payload=row.payload)
@@ -37,8 +43,10 @@ async def relay_once(publisher: MessagePublisher) -> int:
                     "outbox_publish_failed", event_id=str(row.id), event_type=row.event_type
                 )
                 await repository.mark_failed(row.id)
+                outbox_failed_total.inc()
                 continue
             await repository.mark_published(row.id)
+            outbox_published_total.inc()
             published += 1
             log.info("outbox_published", event_id=str(row.id), event_type=row.event_type)
 
