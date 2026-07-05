@@ -13,3 +13,4 @@ them before discussing the project's architecture.
 - [0008 — Outbox pattern for reliable event publishing (SNS/SQS via LocalStack)](0008-outbox-pattern-and-eda.md)
 - [0009 — Extracting Notification and Reporting as standalone microservices](0009-microservice-extraction-notification-reporting.md)
 - [0010 — Observability: tracing (OTel/Jaeger), metrics (Prometheus/Grafana), logs (Loki)](0010-observability-tracing-metrics-logs.md)
+- [0011 — DB deep-dive: composite indexes, optimistic locking (Grades), pessimistic locking (Enrollment), isolation levels](0011-db-indexes-locking-isolation.md)

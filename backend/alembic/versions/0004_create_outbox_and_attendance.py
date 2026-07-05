@@ -48,7 +48,6 @@ def upgrade() -> None:
         sa.Column("status", sa.String(length=20), nullable=False),
         sa.Column("recorded_on", sa.Date(), nullable=False),
     )
-    op.create_index("ix_attendance_records_student_id", "attendance_records", ["student_id"])
     op.create_index("ix_attendance_records_course_id", "attendance_records", ["course_id"])
     op.create_unique_constraint(
         "uq_attendance_student_course_day",

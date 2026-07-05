@@ -60,7 +60,6 @@ def upgrade() -> None:
         sa.Column("course_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("enrolled_on", sa.Date(), nullable=False),
     )
-    op.create_index("ix_enrollments_student_id", "enrollments", ["student_id"])
     op.create_index("ix_enrollments_course_id", "enrollments", ["course_id"])
     op.create_unique_constraint(
         "uq_student_course", "enrollments", ["student_id", "course_id"]
