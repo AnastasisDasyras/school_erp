@@ -5,7 +5,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.auth.api.dependencies import require_role
+from app.modules.auth.current_user import require_role
 from app.modules.grades.api.dependencies import get_grade_service
 from app.modules.grades.api.schemas import GradeResponse, SubmitGradeRequest
 from app.modules.grades.application.exceptions import GradeConflictError, GradeNotFoundError
