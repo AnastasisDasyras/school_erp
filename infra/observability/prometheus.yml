@@ -12,6 +12,31 @@ scrape_configs:
           - backend1:8000
           - backend2:8000
 
+  # Postgres exporter — DB-level metrics (connections, txns, locks, cache
+  # hit ratio). Reached by container name over Docker DNS, like the backend.
+  - job_name: postgres
+    static_configs:
+      - targets:
+          - postgres-exporter:9187
+
+  # Redis exporter — cache metrics (memory, hits/misses, evictions, clients).
+  - job_name: redis
+    static_configs:
+      - targets:
+          - redis-exporter:9121
+
+  # Nginx exporter — load-balancer metrics (connections, request rate).
+  - job_name: nginx
+    static_configs:
+      - targets:
+          - nginx-exporter:9113
+
+  # Node exporter — host metrics (CPU, memory, disk, network).
+  - job_name: node
+    static_configs:
+      - targets:
+          - node-exporter:9100
+
   # Prometheus scrapes itself so we can monitor the scrape health.
   - job_name: prometheus
     static_configs:

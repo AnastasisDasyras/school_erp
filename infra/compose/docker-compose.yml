@@ -243,6 +243,53 @@ services:
       - "4317:4317"     # OTLP gRPC
       - "4318:4318"     # OTLP HTTP
 
+  # Redis exporter: memory, hit/miss ratio, evictions, clients, commands/s
+  # on :9121. No auth on the local Redis, so just point it at the address.
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.62.0
+    environment:
+      REDIS_ADDR: "redis://redis:6379"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # Nginx exporter: scrapes Nginx's stub_status (see nginx.conf) and exposes
+  # connections / request rate at :9113 — load-balancer-layer view that
+  # complements the per-replica app metrics.
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:1.3.0
+    command:
+      - "--nginx.scrape-uri=http://nginx:80/stub_status"
+    depends_on:
+      - nginx
+
+  # Node exporter: host-level CPU, memory, disk, network on :9100. Mounts the
+  # host's /proc, /sys and root fs read-only so it reports the machine's stats,
+  # not the container's.
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--path.rootfs=/rootfs"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+
+  # Postgres exporter: exposes DB metrics (connections, transactions, locks,
+  # cache hit ratio, replication lag) on :9187 for Prometheus to scrape.
+  # Reuses the erp/erp creds and `postgres` service name from above, reaching
+  # the DB over Docker DNS — same pattern as the backend scrape targets.
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+    environment:
+      DATA_SOURCE_NAME: "postgresql://erp:erp@postgres:5432/erp?sslmode=disable"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   # Prometheus: scrapes /metrics from both backend replicas every 15s.
   prometheus:
     image: prom/prometheus:v2.53.0
