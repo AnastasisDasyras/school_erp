@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-
 import structlog
 
 from notification.email import EmailMessage, EmailSender

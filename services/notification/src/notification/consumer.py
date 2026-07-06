@@ -1,36 +1,23 @@
 from __future__ import annotations
 
 import asyncio
-import json
 
 import boto3
 import structlog
 import tenacity
-from opentelemetry import trace
 
 from notification.config import Settings
 from notification.email import EmailSender
 from notification.handler import handle
+from notification.messages import parse_sns_body
 from notification.tracing import tracer
 
 log = structlog.get_logger("notification.consumer")
 
-
-def _parse_body(raw_body: str) -> tuple[str, dict[str, str]]:
-    """SNS wraps the original payload in an envelope when it delivers to SQS.
-    We unwrap it to get event_type (from MessageAttributes) and the payload.
-
-    SNS envelope shape:
-    {
-      "Type": "Notification",
-      "Message": "<json string of the actual payload>",
-      "MessageAttributes": {"event_type": {"Value": "AttendanceRecorded", ...}}
-    }
-    """
-    envelope = json.loads(raw_body)
-    event_type = envelope.get("MessageAttributes", {}).get("event_type", {}).get("Value", "")
-    payload = json.loads(envelope.get("Message", "{}"))
-    return event_type, payload
+# Kept as a module alias for backwards compatibility. The actual parsing now
+# lives in notification.messages so the Lambda entry point can reuse it without
+# importing this module (and its boto3/OTel/poll-loop dependencies).
+_parse_body = parse_sns_body
 
 
 @tenacity.retry(

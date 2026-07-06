@@ -1,0 +1,1 @@
+{"Records": [{"body": "{\"Type\": \"Notification\", \"Message\": \"{\\\"student_id\\\": \\\"ae5a8aa9-cafe-0000-0000-000000000000\\\", \\\"course_id\\\": \\\"course-42\\\", \\\"status\\\": \\\"absent\\\", \\\"recorded_on\\\": \\\"2026-07-06\\\"}\", \"MessageAttributes\": {\"event_type\": {\"Type\": \"String\", \"Value\": \"AttendanceRecorded\"}}}"}]}

@@ -30,3 +30,41 @@ awslocal sns subscribe --topic-arn "$TOPIC_ARN" --protocol sqs --notification-en
 
 # SES requires sender email verification before it will accept send_email calls.
 awslocal ses verify-email-identity --email-address noreply@school.local
+
+# ── Phase 12: AWS Lambda notification path (LocalStack demo) ─────────────────
+# A SECOND consumer for the same AttendanceRecorded events, delivered as a
+# Lambda instead of the long-running container. Its own queue + DLQ keeps it
+# fully isolated from the container consumer's notification-queue, so both fire
+# for every event (the container-vs-serverless side-by-side demo).
+
+LAMBDA_DLQ_ARN=$(awslocal sqs create-queue --queue-name notification-lambda-queue-dlq --query QueueUrl --output text | xargs -I{} awslocal sqs get-queue-attributes --queue-url {} --attribute-names QueueArn --query Attributes.QueueArn --output text)
+
+LAMBDA_QUEUE_URL=$(awslocal sqs create-queue --queue-name notification-lambda-queue \
+  --attributes "{\"RedrivePolicy\":\"{\\\"deadLetterTargetArn\\\":\\\"$LAMBDA_DLQ_ARN\\\",\\\"maxReceiveCount\\\":\\\"3\\\"}\"}" \
+  --query QueueUrl --output text)
+LAMBDA_QUEUE_ARN=$(awslocal sqs get-queue-attributes --queue-url "$LAMBDA_QUEUE_URL" --attribute-names QueueArn --query Attributes.QueueArn --output text)
+
+# Fan-out: same SNS topic, a third SQS subscriber feeding the Lambda's queue.
+awslocal sns subscribe --topic-arn "$TOPIC_ARN" --protocol sqs --notification-endpoint "$LAMBDA_QUEUE_ARN"
+
+# Create the function from the prebuilt zip (mounted at /tmp by docker-compose;
+# built by build-lambda.sh). The role ARN is a placeholder — LocalStack does
+# not enforce IAM permissions. Env vars point the handler at LocalStack SES.
+awslocal lambda create-function \
+  --function-name notification-lambda \
+  --runtime python3.12 \
+  --handler notification.lambda_handler.handler \
+  --role arn:aws:iam::000000000000:role/lambda-role \
+  --zip-file fileb:///opt/lambda-dist/notification-lambda.zip \
+  --timeout 30 \
+  --environment "Variables={AWS_ENDPOINT_URL=http://localstack:4566,AWS_REGION=us-east-1,AWS_ACCESS_KEY_ID=test,AWS_SECRET_ACCESS_KEY=test,SES_FROM_ADDRESS=noreply@school.local}"
+
+awslocal lambda wait function-active-v2 --function-name notification-lambda
+
+# The event-source mapping is what makes this "serverless": AWS (LocalStack)
+# polls notification-lambda-queue and invokes the function per batch. This
+# replaces the hand-rolled receive_message loop the container consumer runs.
+awslocal lambda create-event-source-mapping \
+  --function-name notification-lambda \
+  --event-source-arn "$LAMBDA_QUEUE_ARN" \
+  --batch-size 10

@@ -30,13 +30,26 @@ services:
   localstack:
     image: localstack/localstack:3.8
     environment:
-      SERVICES: sns,sqs,s3,ses
+      SERVICES: sns,sqs,s3,ses,lambda
       DEBUG: 0
+      # LocalStack runs each Lambda in its own Docker container. Placing those
+      # containers on this compose's network lets them reach `localstack:4566`
+      # (for the SES call the handler makes). Compose project name is
+      # `school-erp`, so the default network is `school-erp_default`.
+      LAMBDA_DOCKER_NETWORK: school-erp_default
     ports:
       - "4566:4566"
     volumes:
       - ./localstack-init.sh:/etc/localstack/init/ready.d/init.sh
       - localstack_data:/var/lib/localstack
+      # Required for Lambda: LocalStack spawns Lambda executions as sibling
+      # Docker containers via the host Docker daemon.
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Dir holding the prebuilt Lambda zip, mounted so localstack-init.sh can
+      # deploy it with `awslocal lambda create-function`. Built by
+      # build-lambda.sh into ./lambda-dist/. A DIRECTORY mount (not a single
+      # file) so rebuilding the zip on the host is reflected in the container.
+      - ./lambda-dist:/opt/lambda-dist
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
       interval: 5s
